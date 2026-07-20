@@ -49,6 +49,17 @@ from natsort import natsorted
 HAWOR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HAWOR)
 
+# torch >= 2.6 flipped torch.load's default to weights_only=True, which rejects
+# the omegaconf config objects pickled into the (trusted) HaWoR checkpoint
+# (UnpicklingError: Unsupported global omegaconf.dictconfig.DictConfig). Force a
+# full load process-wide. Safe here: all checkpoints loaded are our own weights.
+import torch as _torch
+_ORIG_TORCH_LOAD = _torch.load
+def _torch_load_full(*a, **k):
+    k["weights_only"] = False
+    return _ORIG_TORCH_LOAD(*a, **k)
+_torch.load = _torch_load_full
+
 
 def read_intrinsics(session_dir):
     """Return (focal, fx, fy, cx, cy, W, H) from a capture's intrinsics.json, or None."""

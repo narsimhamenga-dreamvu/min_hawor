@@ -36,11 +36,17 @@ torch==2.8.0+cu128
 torchvision==0.23.0+cu128
 
 # ---- HaWoR core (cam-space path) -------------------------------------------
-numpy==1.26.4
-opencv-python
+numpy==2.2.6            # matches the proven env; chumpy re-adds np.bool aliases
+# opencv pinned to 4.x (all 3 flavors): a transitive dep otherwise pulls the new
+# opencv 5.x, which requires numpy>=2 AND changes cv2 APIs HaWoR relies on.
+opencv-python==4.11.0.86
+opencv-python-headless==4.11.0.86
+opencv-contrib-python==4.11.0.86
 scikit-image
 smplx==0.1.28
-chumpy@git+https://github.com/mattloper/chumpy
+# chumpy is installed SEPARATELY (see README): its setup.py imports pip, which
+# is absent under PEP517 build isolation -> needs --no-build-isolation.
+# chumpy@git+https://github.com/mattloper/chumpy
 yacs
 timm
 einops

@@ -30,6 +30,9 @@ compile), **Python 3.10**.
 conda create -y -n minhawor python=3.10 && conda activate minhawor
 pip install --upgrade pip
 pip install -r requirements_blackwell.txt
+# chumpy is separate: its setup.py imports pip, which is absent under PEP517
+# build isolation, so build it against the env instead:
+pip install --no-build-isolation "chumpy@git+https://github.com/mattloper/chumpy"
 # pytorch3d must be COMPILED for sm_120 (no reliable prebuilt for pt2.8+cu128):
 TORCH_CUDA_ARCH_LIST="12.0" CUDA_HOME=/usr/local/cuda-12.8 \
   pip install --no-build-isolation "git+https://github.com/facebookresearch/pytorch3d.git@stable"

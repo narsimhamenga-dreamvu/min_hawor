@@ -61,6 +61,18 @@ python run_camspace.py --video_path /mnt/.../exo1/GX010181.MP4 \
 ```
 Add `--vis` to also render the cam-view mp4.
 
+### Faster motion estimation (`--gpus`)
+```bash
+python run_camspace.py --src <dir> --out <out> --gpus 0,1,2,3,4,5,6,7
+```
+Runs motion estimation **mask-free** (the per-frame MANO mask render only feeds
+SLAM/the infiller, which this pipeline skips) and **sharded across GPUs**: left
+and right hands — and long tracks, split on 16-frame window boundaries — run
+concurrently, one model replica per GPU. Output is bit-identical to the default
+single-GPU path (verified: `max|Δ|=0`). Best for long videos; for very short
+clips the per-GPU model-load overhead dominates, so the default path is fine.
+For the 7-view ptron batch, prefer one video per GPU (`run_ptron_session.sh`).
+
 ## Output — `camspace_hands.npz`
 Per hand (axis 0: `0=left, 1=right`), in **that camera's frame**:
 

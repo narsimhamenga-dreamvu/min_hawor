@@ -148,6 +148,10 @@ def main():
     ap.add_argument("--motion_workers", type=int, default=4)
     ap.add_argument("--motion_batch", type=int, default=1)
     ap.add_argument("--motion_precision", default="bf16", choices=["fp32", "bf16", "fp16"])
+    ap.add_argument("--gpus", default=None,
+                    help="comma-separated GPU ids for parallel, mask-free motion estimation "
+                         "(e.g. '0,1,2,3'). Splits left/right hands + long tracks on 16-frame "
+                         "window boundaries across GPUs. Default: single-GPU legacy path.")
     ap.add_argument("--max_frames", type=int, default=0, help="cap frames built (0=all); for quick test/clip runs")
     ap.add_argument("--checkpoint", default="./weights/hawor/checkpoints/hawor.ckpt")
     ap.add_argument("--vis", action="store_true", help="also render the cam-view mp4 (subprocess)")
@@ -196,7 +200,6 @@ def main():
                         os.path.basename(args.video_path).split(".")[0]) == seq_folder
 
     from scripts.scripts_test_video.detect_track_video import detect_track_video
-    from scripts.scripts_test_video.hawor_video import hawor_motion_estimation
     from render_cam_noinfiller import cam2world_no_infiller, get_cameras
 
     # ---- detect + track ----
@@ -205,8 +208,15 @@ def main():
     n_frames = len(imgfiles)
 
     # ---- motion estimation (camera-space MANO) ----
-    print("[motion estimation] ...")
-    frame_chunks_all, img_focal = hawor_motion_estimation(args, start_idx, end_idx, seq_folder)
+    if a.gpus:
+        gpus = [int(g) for g in a.gpus.split(",") if g.strip() != ""]
+        print(f"[motion estimation] parallel + mask-free on GPUs {gpus}")
+        import camspace_motion
+        frame_chunks_all, img_focal = camspace_motion.run_parallel(args, start_idx, end_idx, seq_folder, gpus)
+    else:
+        print("[motion estimation] single-GPU (legacy path w/ mask render) ...")
+        from scripts.scripts_test_video.hawor_video import hawor_motion_estimation
+        frame_chunks_all, img_focal = hawor_motion_estimation(args, start_idx, end_idx, seq_folder)
     if focal is None:
         focal = fx = fy = float(img_focal)
 

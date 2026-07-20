@@ -1,0 +1,20 @@
+# large model weights + MANO (symlinked locally; copy real files on the target)
+/weights/
+/_DATA/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# run outputs / scratch
+*.mp4
+*.npz
+*.npy
+extracted_images/
+tracks_*/
+cam_space/
+vis_cam_*/
+run.log

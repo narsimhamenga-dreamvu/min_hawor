@@ -1,6 +1,7 @@
 # large model weights + MANO (symlinked locally; copy real files on the target)
-/weights/
-/_DATA/
+# no trailing slash: also matches the local symlinks, not just real dirs
+/weights
+/_DATA
 
 # python
 __pycache__/

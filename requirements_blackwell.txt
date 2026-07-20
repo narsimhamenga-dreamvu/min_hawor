@@ -43,7 +43,10 @@ opencv-python==4.11.0.86
 opencv-python-headless==4.11.0.86
 opencv-contrib-python==4.11.0.86
 scikit-image
+scipy==1.15.2               # hard dep of lib/eval_utils custom_utils/filling_utils
 smplx==0.1.28
+pytorch-lightning==2.6.1    # lib/models/hawor.py: HAWOR is a LightningModule
+matplotlib==3.10.8          # lib/vis/viewer.py imports matplotlib.cm at module load
 # chumpy is installed SEPARATELY (see README): its setup.py imports pip, which
 # is absent under PEP517 build isolation -> needs --no-build-isolation.
 # chumpy@git+https://github.com/mattloper/chumpy

@@ -63,10 +63,11 @@ def read_intrinsics(session_dir):
             int(ci["width"]), int(ci["height"]))
 
 
-def build_frames(src_or_video, img_folder):
+def build_frames(src_or_video, img_folder, max_frames=0):
     """Populate img_folder with sequential 000000.jpg... Returns list of source frame ids.
 
     Priority: color_frames/*.png (in frames_index.csv order) > a video file (ffmpeg).
+    max_frames > 0 caps the number of frames built (for quick test/clip runs).
     """
     os.makedirs(img_folder, exist_ok=True)
     existing = natsorted(glob(os.path.join(img_folder, "*.jpg")))
@@ -83,6 +84,8 @@ def build_frames(src_or_video, img_folder):
         rows = sorted(csv.DictReader(open(idx_csv)), key=lambda r: int(r["frame_index"]))
         frame_ids, seq, missing = [], 0, 0
         for r in rows:
+            if max_frames and seq >= max_frames:
+                break
             fi = int(r["frame_index"])
             png = os.path.join(color_frames, f"{fi:06d}.png")
             if not os.path.exists(png):
@@ -91,7 +94,8 @@ def build_frames(src_or_video, img_folder):
             os.symlink(png, os.path.join(img_folder, f"{seq:06d}.jpg"))
             frame_ids.append(fi)
             seq += 1
-        print(f"[frames] linked {seq} color_frames ({missing} missing) in index order")
+        print(f"[frames] linked {seq} color_frames ({missing} missing) in index order"
+              + (f" [capped at {max_frames}]" if max_frames else ""))
         if seq == 0:
             raise RuntimeError("no color_frames matched frames_index.csv")
         return frame_ids
@@ -107,8 +111,11 @@ def build_frames(src_or_video, img_folder):
             raise FileNotFoundError(f"no color_frames/ and no video in {src_or_video}")
     print(f"[frames] extracting {video} @ fps=30 ...")
     import subprocess
-    subprocess.run(["ffmpeg", "-i", video, "-vf", "fps=30", "-start_number", "0",
-                    os.path.join(img_folder, "%06d.jpg")], check=True)
+    cmd = ["ffmpeg", "-i", video, "-vf", "fps=30", "-start_number", "0"]
+    if max_frames:
+        cmd += ["-frames:v", str(max_frames)]
+    cmd += [os.path.join(img_folder, "%06d.jpg")]
+    subprocess.run(cmd, check=True)
     n = len(natsorted(glob(os.path.join(img_folder, "*.jpg"))))
     print(f"[frames] extracted {n} frames")
     return list(range(n))
@@ -130,6 +137,7 @@ def main():
     ap.add_argument("--motion_workers", type=int, default=4)
     ap.add_argument("--motion_batch", type=int, default=1)
     ap.add_argument("--motion_precision", default="bf16", choices=["fp32", "bf16", "fp16"])
+    ap.add_argument("--max_frames", type=int, default=0, help="cap frames built (0=all); for quick test/clip runs")
     ap.add_argument("--checkpoint", default="./weights/hawor/checkpoints/hawor.ckpt")
     ap.add_argument("--vis", action="store_true", help="also render the cam-view mp4 (subprocess)")
     ap.add_argument("--median_betas", action="store_true", help="vis with per-hand median betas")
@@ -142,7 +150,7 @@ def main():
 
     # ---- frames ----
     source = a.src if a.src else a.video_path
-    frame_ids = build_frames(source, img_folder)
+    frame_ids = build_frames(source, img_folder, max_frames=a.max_frames)
 
     # ---- intrinsics ----
     focal, fx, fy, cx, cy, W, H = a.img_focal, a.img_focal, a.img_focal, a.img_cx, a.img_cy, None, None

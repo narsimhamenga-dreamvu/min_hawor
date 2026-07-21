@@ -65,13 +65,22 @@ Add `--vis` to also render the cam-view mp4.
 ```bash
 python run_camspace.py --src <dir> --out <out> --gpus 0,1,2,3,4,5,6,7
 ```
-Runs motion estimation **mask-free** (the per-frame MANO mask render only feeds
-SLAM/the infiller, which this pipeline skips) and **sharded across GPUs**: left
-and right hands — and long tracks, split on 16-frame window boundaries — run
-concurrently, one model replica per GPU. Output is bit-identical to the default
-single-GPU path (verified: `max|Δ|=0`). Best for long videos; for very short
-clips the per-GPU model-load overhead dominates, so the default path is fine.
-For the 7-view ptron batch, prefer one video per GPU (`run_ptron_session.sh`).
+Parallelizes the two heavy stages across GPUs (one subprocess per GPU):
+- **Detection** (`camspace_detect.py`): YOLO detection is sharded over contiguous
+  frame blocks. Replaces the stateful `.track()` (which is single-GPU/sequential)
+  with plain per-frame detection collapsed to left/right by handedness — what the
+  downstream actually uses. Quality-equivalent to the tracker (validated on
+  SEC001: root-orientation median 0.45°/max 2.6°, translation ~4 mm; the only
+  change is raw vs Kalman-smoothed boxes). Non-ego only; the Molmo ego-filter
+  stays sequential.
+- **Motion estimation** (`camspace_motion.py`): runs **mask-free** (the per-frame
+  MANO mask feeds only SLAM/the infiller, which this pipeline skips) and shards
+  left/right hands + long tracks on 16-frame window boundaries — bit-identical to
+  the single-GPU motion path (`max|Δ|=0`).
+
+Best for long videos; for very short clips the per-GPU model-load overhead
+dominates, so the default single-GPU path is fine. For the 7-view ptron batch,
+prefer one video per GPU (`run_ptron_session.sh`).
 
 ## Output — `camspace_hands.npz`
 Per hand (axis 0: `0=left, 1=right`), in **that camera's frame**:

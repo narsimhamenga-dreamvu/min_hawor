@@ -204,6 +204,15 @@ def main():
 
     # ---- detect + track ----
     print(f"[detect+track] ego_filter={a.ego_filter}")
+    # parallel YOLO detection (non-ego only): pre-write tracks so detect_track_video
+    # skips its single-GPU tracker loop. Molmo ego-filter stays sequential.
+    if a.gpus and not a.ego_filter:
+        gpus = [int(g) for g in a.gpus.split(",") if g.strip() != ""]
+        _imgfiles = natsorted(glob(os.path.join(img_folder, "*.jpg")))
+        import camspace_detect
+        print(f"[detect] parallel YOLO on GPUs {gpus}")
+        camspace_detect.run_parallel(seq_folder, 0, len(_imgfiles), _imgfiles, gpus,
+                                     detector="./weights/external/detector.pt")
     start_idx, end_idx, seq_folder, imgfiles = detect_track_video(args)
     n_frames = len(imgfiles)
 

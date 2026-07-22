@@ -12,7 +12,7 @@ Intentionally SKIPPED: DROID-SLAM, the neural infiller, and the world-space vis
 runner has no dependency on thirdparty/DROID-SLAM or thirdparty/Metric3D.
 
 Input — either:
-  --src <session_dir>   RealSense-style capture: uses color_frames/*.png in
+  --src <session_dir>   RealSense-style capture: uses color_frames/*.{jpg,png} in
                         frames_index.csv order if present (else color.mp4), and
                         auto-reads intrinsics.json -> focal / cx / cy.
   --video_path <mp4>    any video (GoPro GX*.MP4, DJI *.MP4, ...); pass --img_focal.
@@ -77,7 +77,7 @@ def read_intrinsics(session_dir):
 def build_frames(src_or_video, img_folder, max_frames=0):
     """Populate img_folder with sequential 000000.jpg... Returns list of source frame ids.
 
-    Priority: color_frames/*.png (in frames_index.csv order) > a video file (ffmpeg).
+    Priority: color_frames/*.{jpg,png} (in frames_index.csv order) > a video file (ffmpeg).
     max_frames > 0 caps the number of frames built (for quick test/clip runs).
     """
     os.makedirs(img_folder, exist_ok=True)
@@ -98,11 +98,16 @@ def build_frames(src_or_video, img_folder, max_frames=0):
             if max_frames and seq >= max_frames:
                 break
             fi = int(r["frame_index"])
-            png = os.path.join(color_frames, f"{fi:06d}.png")
-            if not os.path.exists(png):
+            src_frame = None
+            for cand_ext in (".jpg", ".jpeg", ".png"):
+                cand = os.path.join(color_frames, f"{fi:06d}{cand_ext}")
+                if os.path.exists(cand):
+                    src_frame = cand
+                    break
+            if src_frame is None:
                 missing += 1
                 continue
-            os.symlink(png, os.path.join(img_folder, f"{seq:06d}.jpg"))
+            os.symlink(src_frame, os.path.join(img_folder, f"{seq:06d}.jpg"))
             frame_ids.append(fi)
             seq += 1
         print(f"[frames] linked {seq} color_frames ({missing} missing) in index order"
